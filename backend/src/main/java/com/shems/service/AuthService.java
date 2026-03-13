@@ -160,7 +160,7 @@ public class AuthService {
             emailService.sendVerificationOTP(email, "User", otp);
             return "OTP sent to your email. It will expire in 10 minutes.";
         } catch (IllegalStateException e) {
-            return "Email service is not configured. OTP generated. Check the backend console logs for the OTP.";
+            return "Email service is not configured. Use this OTP to continue: " + otp + ". It will expire in 10 minutes.";
         }
     }
 
@@ -228,7 +228,7 @@ public class AuthService {
             emailService.sendPasswordResetOTP(email, user.getFirstName(), resetOTP);
             return "OTP for password reset has been sent to your email. It will expire in 10 minutes.";
         } catch (IllegalStateException e) {
-            return "Email service is not configured. Reset OTP generated. Check the backend console logs for the OTP.";
+            return "Email service is not configured. Use this reset OTP to continue: " + resetOTP + ". It will expire in 10 minutes.";
         }
     }
 
