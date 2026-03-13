@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Limewash & Camel Theme */
+  --primary-limewash: #E8DCC4;    /* Light limewash beige */
+  --primary-camel: #C4A575;       /* Warm camel tan */
+  --dark-camel: #A0885A;          /* Dark camel brown */
+  --light-limewash: #F5EFE5;      /* Light limewash */
+  --white-cream: #FDFBF8;         /* Off-white/cream */
+  --text-dark: #000000;           /* Black text */
+  --text-light: #333333;          /* Dark gray text */
+  --accent-gold: #D4AF6E;         /* Gold accent */
+  
+  /* Backwards compatibility */
+  --primary-nude: #C4A575;
+  --primary-mist: #E8DCC4;
+  --dark-nude: #A0885A;
+  --light-beige: #F5EFE5;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--white-cream);
+  color: var(--text-dark);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.3px;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-limewash);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-nude);
+  border-radius: 5px;
+  border: 2px solid var(--light-limewash);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-camel);
+}

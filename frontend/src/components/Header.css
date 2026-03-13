@@ -1,0 +1,238 @@
+/* Header */
+.header {
+  background: linear-gradient(90deg, var(--primary-camel) 0%, var(--primary-limewash) 100%);
+  box-shadow: 0 2px 8px rgba(63, 63, 63, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(160, 136, 90, 0.15);
+}
+
+.header-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 50px;
+  transition: all 0.3s ease;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #000000;
+  font-size: 18px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  font-family: 'Playfair Display', serif;
+  letter-spacing: 1px;
+}
+
+.logo:hover {
+  transform: scale(1.05);
+}
+
+.logo-icon {
+  font-size: 18px;
+  -webkit-text-fill-color: inherit;
+}
+
+.logo-text {
+  letter-spacing: 1px;
+  color: #000000;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+}
+
+/* Header Navigation */
+.header-nav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--text-dark);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: #000000;
+  background: rgba(201, 174, 148, 0.1);
+}
+
+.nav-link.active {
+  color: var(--white-cream);
+  background: var(--primary-camel);
+  font-weight: 700;
+}
+
+/* Header Right */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+  color: var(--text-dark);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.logout-btn {
+  background: var(--primary-camel);
+  color: var(--white-cream);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(139, 115, 85, 0.15);
+}
+
+.logout-btn:hover {
+  background: var(--dark-camel);
+  box-shadow: 0 6px 16px rgba(139, 115, 85, 0.25);
+  transform: translateY(-2px);
+}
+
+.auth-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.login-link {
+  color: var(--text-dark);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.login-link:hover {
+  background: rgba(201, 174, 148, 0.1);
+}
+
+.signup-link {
+  color: var(--white-cream);
+  background: var(--primary-camel);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(139, 115, 85, 0.15);
+}
+
+.signup-link:hover {
+  background: var(--dark-camel);
+  box-shadow: 0 6px 16px rgba(139, 115, 85, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 20px;
+    height: 50px;
+  }
+
+  .header-nav {
+    display: none;
+  }
+
+  .user-section {
+    padding: 0 10px;
+    gap: 8px;
+    border-left: none;
+    flex-direction: column;
+  }
+
+  .user-name {
+    font-size: 11px;
+  }
+
+  .logo {
+    font-size: 14px;
+  }
+
+  .logo-icon {
+    font-size: 16px;
+  }
+
+  .auth-links {
+    gap: 6px;
+  }
+
+  .login-link,
+  .signup-link {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .logout-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 0 15px;
+    height: 45px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .user-section {
+    padding: 0 8px;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .logo {
+    font-size: 12px;
+  }
+
+  .logo-icon {
+    font-size: 14px;
+  }
+
+  .logo-text {
+    letter-spacing: 0.5px;
+  }
+}
