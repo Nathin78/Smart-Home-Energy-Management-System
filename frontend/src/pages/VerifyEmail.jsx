@@ -9,11 +9,11 @@ function VerifyEmail() {
   const [loading, setLoading] = useState(true)
   const [verified, setVerified] = useState(false)
   const [error, setError] = useState('')
-  const token = searchParams.get('token')
+  const token = searchParams.get('otp') || searchParams.get('token')
 
   useEffect(() => {
     if (!token) {
-      setError('No verification token provided')
+      setError('No verification code provided')
       setLoading(false)
       return
     }

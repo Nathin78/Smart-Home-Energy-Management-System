@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,9 @@ public class UsageService {
                 .stream()
                 .map(Device::getId)
                 .collect(Collectors.toList());
+        if (deviceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
         return usageRepository.findUsageForDevicesInDateRange(deviceIds, startDate, endDate);
     }
 
@@ -45,6 +49,9 @@ public class UsageService {
                 .stream()
                 .map(Device::getId)
                 .collect(Collectors.toList());
+        if (deviceIds.isEmpty()) {
+            return 0.0;
+        }
         Double total = usageRepository.getTotalConsumptionForDevices(deviceIds, startDate, endDate);
         return total != null ? total : 0.0;
     }

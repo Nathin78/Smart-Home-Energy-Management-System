@@ -162,6 +162,7 @@ Open your browser and go to: **http://localhost:5173**
 - `GET /api/dashboard/energy-stats` - Get energy statistics
 - `GET /api/dashboard/today-consumption` - Get today's consumption
 - `GET /api/dashboard/monthly-data` - Get monthly data
+- `GET /api/dashboard/report/daily` - Download daily report
 - `GET /api/dashboard/report/weekly` - Download weekly report
 - `GET /api/dashboard/report/monthly` - Download monthly report
 

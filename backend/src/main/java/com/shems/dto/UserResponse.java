@@ -14,4 +14,14 @@ public class UserResponse {
     private String email;
     private String mobileNumber;
     private String primaryInterest;
+    private String profilePhoto;
+    private String addressLine1;
+    private String addressLine2;
+    private String city;
+    private String state;
+    private String postalCode;
+    private String country;
+    private String dateOfBirth;
+    private String occupation;
+    private String bio;
 }

@@ -93,6 +93,12 @@ function Register() {
     if (otpError) setOtpError('')
   }
 
+  const handleOtpChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
+    setOtp(value)
+    if (otpError) setOtpError('')
+  }
+
   const handleSendOTP = async (e) => {
     e.preventDefault()
     
@@ -356,24 +362,17 @@ function Register() {
                   id="otp"
                   name="otp"
                   value={otp}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '')
-                    console.log('OTP input changed:', value, 'Length:', value.length)
-                    if (value.length <= 6) {
-                      setOtp(value)
-                      setOtpError('')
-                    }
-                  }}
+                  onChange={handleOtpChange}
                   placeholder="000000"
                   maxLength="6"
                   disabled={otpLoading}
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                 />
                 <p className="info-text">Enter the 6-digit code from your verification email</p>
               </div>
 
               <button type="submit" className="submit-btn" disabled={otpLoading || otp.length !== 6}>
-                {console.log('Button render - OTP length:', otp.length, 'otpLoading:', otpLoading, 'Button disabled:', otpLoading || otp.length !== 6)}
                 {otpLoading ? 'Verifying OTP...' : 'Verify Code'}
               </button>
             </form>

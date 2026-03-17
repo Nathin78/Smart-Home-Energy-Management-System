@@ -52,14 +52,24 @@ public class AuthService {
         // Generate a simple JWT token (in production, use proper JWT library)
         String token = generateToken(user.getId());
 
-        UserResponse userResponse = new UserResponse(
-            user.getId(),
-            user.getFirstName(),
-            user.getLastName(),
-            user.getEmail(),
-            user.getMobileNumber(),
-            user.getPrimaryInterest()
-        );
+        UserResponse userResponse = buildUserResponse(user);
+
+        // Send welcome email on first successful login after registration
+        if (user.getWelcomeEmailSentAt() == null
+                && Boolean.TRUE.equals(user.getEmailVerified())
+                && user.getEmail() != null
+                && !user.getEmail().isBlank()) {
+            try {
+                if (emailService.isConfigured()) {
+                    emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName());
+                    user.setWelcomeEmailSentAt(LocalDateTime.now());
+                    userRepository.save(user);
+                }
+            } catch (Exception e) {
+                // Don't block login if email fails
+                System.err.println("Failed to send welcome email to userId=" + user.getId() + ": " + e.getMessage());
+            }
+        }
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);
@@ -108,14 +118,7 @@ public class AuthService {
 
         String token = generateToken(savedUser.getId());
 
-        UserResponse userResponse = new UserResponse(
-            savedUser.getId(),
-            savedUser.getFirstName(),
-            savedUser.getLastName(),
-            savedUser.getEmail(),
-            savedUser.getMobileNumber(),
-            savedUser.getPrimaryInterest()
-        );
+        UserResponse userResponse = buildUserResponse(savedUser);
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);
@@ -155,12 +158,15 @@ public class AuthService {
         tempUser.setVerificationOTPExpiry(LocalDateTime.now().plusMinutes(10));
         userRepository.save(tempUser);
         
-        // Send OTP to email. If mail is not configured, keep running for local dev.
+        // Send OTP to email. If mail is not configured or fails, keep running for local dev.
         try {
             emailService.sendVerificationOTP(email, "User", otp);
             return "OTP sent to your email. It will expire in 10 minutes.";
         } catch (IllegalStateException e) {
             return "Email service is not configured. Use this OTP to continue: " + otp + ". It will expire in 10 minutes.";
+        } catch (RuntimeException e) {
+            System.err.println("Failed to send verification OTP email: " + e.getMessage());
+            return "Email could not be sent. Use this OTP to continue: " + otp + ". It will expire in 10 minutes.";
         }
     }
 
@@ -204,6 +210,27 @@ public class AuthService {
             || ("Pending".equals(user.getFirstName()) && "Verification".equals(user.getLastName()));
     }
 
+    private UserResponse buildUserResponse(User user) {
+        return new UserResponse(
+            user.getId(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getEmail(),
+            user.getMobileNumber(),
+            user.getPrimaryInterest(),
+            user.getProfilePhoto(),
+            user.getAddressLine1(),
+            user.getAddressLine2(),
+            user.getCity(),
+            user.getState(),
+            user.getPostalCode(),
+            user.getCountry(),
+            user.getDateOfBirth(),
+            user.getOccupation(),
+            user.getBio()
+        );
+    }
+
     public String resetPassword(String email) throws Exception {
         email = normalizeEmail(email);
         if (email == null) {
@@ -223,12 +250,15 @@ public class AuthService {
         user.setVerificationOTPExpiry(LocalDateTime.now().plusMinutes(10));
         userRepository.save(user);
         
-        // Send reset OTP to email. If mail is not configured, keep running for local dev.
+        // Send reset OTP to email. If mail is not configured or fails, keep running for local dev.
         try {
             emailService.sendPasswordResetOTP(email, user.getFirstName(), resetOTP);
             return "OTP for password reset has been sent to your email. It will expire in 10 minutes.";
         } catch (IllegalStateException e) {
             return "Email service is not configured. Use this reset OTP to continue: " + resetOTP + ". It will expire in 10 minutes.";
+        } catch (RuntimeException e) {
+            System.err.println("Failed to send reset OTP email: " + e.getMessage());
+            return "Email could not be sent. Use this reset OTP to continue: " + resetOTP + ". It will expire in 10 minutes.";
         }
     }
 

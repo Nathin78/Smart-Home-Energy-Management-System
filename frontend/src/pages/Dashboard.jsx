@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deviceAPI, dashboardAPI } from '../services/api'
+import { authAPI, deviceAPI, dashboardAPI, roomAPI, userAPI } from '../services/api'
 import './Dashboard.css'
 
 function Dashboard({ onLogout }) {
@@ -17,6 +17,8 @@ function Dashboard({ onLogout }) {
   const [deviceStates, setDeviceStates] = useState({})
   const [consumptionData, setConsumptionData] = useState([])
   const [roomWiseData, setRoomWiseData] = useState([])
+  const [newRoomName, setNewRoomName] = useState('')
+  const [addingRoom, setAddingRoom] = useState(false)
   const [deviceConsumption, setDeviceConsumption] = useState([])
   const [notificationPrefs, setNotificationPrefs] = useState({
     energyAlerts: true,
@@ -25,13 +27,32 @@ function Dashboard({ onLogout }) {
     peakAlerts: false,
   })
   const [monthlyTarget, setMonthlyTarget] = useState(350)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const [changePasswordEmail, setChangePasswordEmail] = useState('')
+  const [changePasswordOtp, setChangePasswordOtp] = useState('')
+  const [changePasswordNewPassword, setChangePasswordNewPassword] = useState('')
+  const [changePasswordConfirmPassword, setChangePasswordConfirmPassword] = useState('')
+  const [changePasswordStatus, setChangePasswordStatus] = useState('')
+  const [changePasswordSendingOtp, setChangePasswordSendingOtp] = useState(false)
+  const [changePasswordSaving, setChangePasswordSaving] = useState(false)
+  const [changePasswordOtpSent, setChangePasswordOtpSent] = useState(false)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
     mobileNumber: '',
+    profilePhoto: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
+    dateOfBirth: '',
+    occupation: '',
+    bio: '',
   })
   const [newDevice, setNewDevice] = useState({
     name: '',
@@ -58,7 +79,6 @@ function Dashboard({ onLogout }) {
     const storedUser = getStoredUser()
     if (storedUser) setUser(storedUser)
     loadDashboardData({ silent: false })
-    generateRoomWiseData()
 
     const storedSettings = localStorage.getItem('dashboardSettings')
     if (storedSettings) {
@@ -70,18 +90,43 @@ function Dashboard({ onLogout }) {
         if (typeof parsed?.monthlyTarget === 'number') {
           setMonthlyTarget(parsed.monthlyTarget)
         }
-        if (typeof parsed?.twoFactorEnabled === 'boolean') {
-          setTwoFactorEnabled(parsed.twoFactorEnabled)
-        }
       } catch (error) {
         console.warn('Failed to parse dashboard settings:', error)
       }
     }
   }, [])
 
+  const loadPreferencesFromServer = async (userId) => {
+    if (!userId) return
+    try {
+      const res = await dashboardAPI.getPreferences(userId)
+      const prefs = res?.data || {}
+      setNotificationPrefs(prev => ({
+        ...prev,
+        energyAlerts: typeof prefs.energyAlerts === 'boolean' ? prefs.energyAlerts : prev.energyAlerts,
+        emailNotifications: typeof prefs.emailNotifications === 'boolean' ? prefs.emailNotifications : prev.emailNotifications,
+        weeklyReports: typeof prefs.weeklyReports === 'boolean' ? prefs.weeklyReports : prev.weeklyReports,
+        peakAlerts: typeof prefs.peakAlerts === 'boolean' ? prefs.peakAlerts : prev.peakAlerts,
+      }))
+      if (typeof prefs.monthlyTargetKwh === 'number') {
+        setMonthlyTarget(prefs.monthlyTargetKwh)
+      }
+    } catch (e) {
+      // Keep localStorage preferences as fallback
+      console.warn('Failed to load preferences from server:', e?.message || e)
+    }
+  }
+
   useEffect(() => {
     loadConsumptionData(timePeriod)
   }, [timePeriod, user?.id])
+
+  useEffect(() => {
+    const userData = user || getStoredUser()
+    const userId = userData?.id
+    if (!userId) return
+    loadPreferencesFromServer(userId)
+  }, [user?.id])
 
   useEffect(() => {
     timePeriodRef.current = timePeriod
@@ -135,6 +180,16 @@ function Dashboard({ onLogout }) {
         lastName: user.lastName || '',
         email: user.email || '',
         mobileNumber: user.mobileNumber || '',
+        profilePhoto: user.profilePhoto || '',
+        addressLine1: user.addressLine1 || '',
+        addressLine2: user.addressLine2 || '',
+        city: user.city || '',
+        state: user.state || '',
+        postalCode: user.postalCode || '',
+        country: user.country || '',
+        dateOfBirth: user.dateOfBirth || '',
+        occupation: user.occupation || '',
+        bio: user.bio || '',
       })
     }
   }, [user])
@@ -297,18 +352,6 @@ function Dashboard({ onLogout }) {
     setConsumptionData(data)
   }
 
-  const generateRoomWiseData = () => {
-    const rooms = [
-      { name: 'Living Room', color: '#8B5FBF', percentage: 35, consumption: 8.5, average: 0.35, peak: '2PM - 6PM', trend: 'Stable' },
-      { name: 'Kitchen', color: '#4A90E2', percentage: 25, consumption: 6.2, average: 0.26, peak: '2PM - 6PM', trend: 'Stable' },
-      { name: 'Master Bedroom', color: '#2ECC71', percentage: 17, consumption: 4.1, average: 0.17, peak: '2PM - 6PM', trend: 'Stable' },
-      { name: 'Home Office', color: '#F5A623', percentage: 13, consumption: 3.2, average: 0.32, peak: '9AM - 5PM', trend: 'Increasing' },
-      { name: 'Bathroom', color: '#E74C3C', percentage: 7, consumption: 1.8, average: 0.07, peak: '7AM - 9AM', trend: 'Stable' },
-      { name: 'Other Rooms', color: '#95A5A6', percentage: 3, consumption: 0.8, average: 0.03, peak: 'Variable', trend: 'Decreasing' },
-    ]
-    setRoomWiseData(rooms)
-  }
-
   const loadDashboardData = async ({ silent } = { silent: false }) => {
     try {
       if (!silent) setLoading(true)
@@ -330,6 +373,15 @@ function Dashboard({ onLogout }) {
         states[id] = status !== 'inactive'
       })
       setDeviceStates(states)
+      if (userId) {
+        try {
+          const roomRes = await dashboardAPI.getRoomWise(userId)
+          setRoomWiseData(roomRes.data || [])
+        } catch (e) {
+          console.warn('Failed to load room-wise data:', e?.message || e)
+          setRoomWiseData([])
+        }
+      }
       setLastUpdatedAt(Date.now())
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -472,17 +524,35 @@ function Dashboard({ onLogout }) {
     }))
   }
 
-  const handleSavePreferences = () => {
+  const handleSavePreferences = async () => {
     const payload = {
       notificationPrefs,
       monthlyTarget,
-      twoFactorEnabled,
     }
     localStorage.setItem('dashboardSettings', JSON.stringify(payload))
+
+    const userData = user || getStoredUser()
+    const userId = userData?.id
+    if (userId) {
+      try {
+        await dashboardAPI.savePreferences(userId, {
+          energyAlerts: notificationPrefs.energyAlerts,
+          emailNotifications: notificationPrefs.emailNotifications,
+          weeklyReports: notificationPrefs.weeklyReports,
+          peakAlerts: notificationPrefs.peakAlerts,
+          monthlyTargetKwh: Number(monthlyTarget),
+        })
+      } catch (e) {
+        console.warn('Failed to save preferences to server:', e?.message || e)
+        alert('Preferences saved locally, but failed to save to server. Please try again.')
+        return
+      }
+    }
+
     alert('Preferences saved. Work complete.')
   }
 
-  const handleSetGoal = () => {
+  const handleSetGoal = async () => {
     if (Number.isNaN(Number(monthlyTarget)) || monthlyTarget < 100 || monthlyTarget > 1000) {
       alert('Please enter a monthly target between 100 and 1000 kWh.')
       return
@@ -490,10 +560,56 @@ function Dashboard({ onLogout }) {
     const payload = {
       notificationPrefs,
       monthlyTarget: Number(monthlyTarget),
-      twoFactorEnabled,
     }
     localStorage.setItem('dashboardSettings', JSON.stringify(payload))
+
+    const userData = user || getStoredUser()
+    const userId = userData?.id
+    if (userId) {
+      try {
+        await dashboardAPI.savePreferences(userId, {
+          energyAlerts: notificationPrefs.energyAlerts,
+          emailNotifications: notificationPrefs.emailNotifications,
+          weeklyReports: notificationPrefs.weeklyReports,
+          peakAlerts: notificationPrefs.peakAlerts,
+          monthlyTargetKwh: Number(monthlyTarget),
+        })
+      } catch (e) {
+        console.warn('Failed to save goal to server:', e?.message || e)
+        alert('Energy goal updated locally, but failed to save to server. Please try again.')
+        return
+      }
+    }
+
     alert('Energy goal updated. Work complete.')
+  }
+
+  const handleAddRoom = async (e) => {
+    e.preventDefault()
+    const name = newRoomName.trim()
+    if (!name) {
+      alert('Please enter a room name.')
+      return
+    }
+    const userData = user || getStoredUser()
+    const userId = userData?.id
+    if (!userId) {
+      alert('Please log in again to add rooms.')
+      return
+    }
+    setAddingRoom(true)
+    try {
+      await roomAPI.addRoom(userId, name)
+      setNewRoomName('')
+      const roomRes = await dashboardAPI.getRoomWise(userId)
+      setRoomWiseData(roomRes.data || [])
+      alert('Room added.')
+    } catch (e) {
+      console.warn('Failed to add room:', e?.message || e)
+      alert(e?.response?.data?.message || 'Failed to add room. Please try again.')
+    } finally {
+      setAddingRoom(false)
+    }
   }
 
   const handleEditProfile = () => {
@@ -508,42 +624,221 @@ function Dashboard({ onLogout }) {
         lastName: user.lastName || '',
         email: user.email || '',
         mobileNumber: user.mobileNumber || '',
+        profilePhoto: user.profilePhoto || '',
+        addressLine1: user.addressLine1 || '',
+        addressLine2: user.addressLine2 || '',
+        city: user.city || '',
+        state: user.state || '',
+        postalCode: user.postalCode || '',
+        country: user.country || '',
+        dateOfBirth: user.dateOfBirth || '',
+        occupation: user.occupation || '',
+        bio: user.bio || '',
       })
     }
   }
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!profileForm.firstName || !profileForm.lastName || !profileForm.email) {
       alert('First name, last name, and email are required.')
       return
     }
-    const updatedUser = {
-      ...(user || {}),
-      firstName: profileForm.firstName.trim(),
-      lastName: profileForm.lastName.trim(),
-      email: profileForm.email.trim(),
-      mobileNumber: profileForm.mobileNumber.trim(),
+    const userData = user || getStoredUser()
+    const userId = userData?.id
+    if (!userId) {
+      alert('User not authenticated. Please login again.')
+      return
     }
-    setUser(updatedUser)
-    localStorage.setItem('user', JSON.stringify(updatedUser))
-    setIsEditingProfile(false)
-    alert('Profile updated. Work complete.')
+
+    setProfileSaving(true)
+    try {
+      const payload = {
+        firstName: profileForm.firstName.trim(),
+        lastName: profileForm.lastName.trim(),
+        email: profileForm.email.trim(),
+        mobileNumber: profileForm.mobileNumber.trim(),
+        profilePhoto: profileForm.profilePhoto || '',
+        addressLine1: profileForm.addressLine1.trim(),
+        addressLine2: profileForm.addressLine2.trim(),
+        city: profileForm.city.trim(),
+        state: profileForm.state.trim(),
+        postalCode: profileForm.postalCode.trim(),
+        country: profileForm.country.trim(),
+        dateOfBirth: profileForm.dateOfBirth,
+        occupation: profileForm.occupation.trim(),
+        bio: profileForm.bio.trim(),
+      }
+      const response = await userAPI.updateProfile(userId, payload)
+      const updatedUser = response?.data?.user || response?.data || userData
+      setUser(updatedUser)
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      setIsEditingProfile(false)
+      alert(response?.data?.message || 'Profile updated. Work complete.')
+    } catch (error) {
+      const message = extractApiErrorMessage(error) || 'Failed to update profile.'
+      alert(message)
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  const persistProfilePhoto = async (nextPhoto) => {
+    const baseUser = user || getStoredUser() || {}
+    if (!baseUser?.id) return
+    try {
+      const response = await userAPI.updateProfile(baseUser.id, { profilePhoto: nextPhoto || '' })
+      const updatedUser = response?.data?.user || response?.data || baseUser
+      setUser(updatedUser)
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+    } catch (error) {
+      console.warn('Failed to save profile photo:', error)
+      alert(extractApiErrorMessage(error) || 'Failed to update profile photo.')
+    }
+  }
+
+  const handleProfilePhotoChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.')
+      event.target.value = ''
+      return
+    }
+
+    const maxSizeMb = 2
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      alert(`Image is too large. Please select a file under ${maxSizeMb}MB.`)
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      setProfileForm(prev => ({
+        ...prev,
+        profilePhoto: result,
+      }))
+      if (!isEditingProfile) {
+        persistProfilePhoto(result)
+      }
+      event.target.value = ''
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveProfilePhoto = () => {
+    setProfileForm(prev => ({
+      ...prev,
+      profilePhoto: '',
+    }))
+    if (!isEditingProfile) {
+      persistProfilePhoto('')
+    }
+  }
+
+  const getInitials = (firstName, lastName) => {
+    const first = (firstName || '').trim()
+    const last = (lastName || '').trim()
+    const firstInitial = first ? first[0].toUpperCase() : ''
+    const lastInitial = last ? last[0].toUpperCase() : ''
+    const initials = `${firstInitial}${lastInitial}`.trim()
+    return initials || 'U'
+  }
+
+  const getAddressSummary = (data) => {
+    const parts = [
+      data?.addressLine1,
+      data?.addressLine2,
+      data?.city,
+      data?.state,
+      data?.postalCode,
+      data?.country,
+    ].map(part => (part || '').trim()).filter(Boolean)
+    return parts.join(', ')
+  }
+
+  const extractApiErrorMessage = (error) => {
+    const data = error?.response?.data
+    if (!data) return error?.message
+    if (typeof data === 'string') return data
+    return data?.message || error?.message
+  }
+
+  const resetChangePasswordState = (email) => {
+    setChangePasswordEmail(email || '')
+    setChangePasswordOtp('')
+    setChangePasswordNewPassword('')
+    setChangePasswordConfirmPassword('')
+    setChangePasswordStatus('')
+    setChangePasswordOtpSent(false)
+    setChangePasswordSendingOtp(false)
+    setChangePasswordSaving(false)
   }
 
   const handleChangePassword = () => {
-    alert('Password change request submitted. Work complete.')
+    const userData = user || getStoredUser()
+    const email = userData?.email?.trim()
+    if (!email) {
+      alert('Error: email not found for this account.')
+      return
+    }
+    resetChangePasswordState(email)
+    setChangePasswordOpen(true)
   }
 
-  const handleToggleTwoFactor = () => {
-    const nextValue = !twoFactorEnabled
-    setTwoFactorEnabled(nextValue)
-    const payload = {
-      notificationPrefs,
-      monthlyTarget,
-      twoFactorEnabled: nextValue,
+  const handleSendChangePasswordOtp = async () => {
+    if (!changePasswordEmail) return
+    setChangePasswordSendingOtp(true)
+    setChangePasswordStatus('')
+    try {
+      const response = await authAPI.forgotPassword(changePasswordEmail)
+      setChangePasswordOtpSent(true)
+      setChangePasswordStatus(response?.data?.message || 'Verification code sent to your email.')
+    } catch (error) {
+      setChangePasswordStatus(extractApiErrorMessage(error) || 'Failed to send verification code.')
+    } finally {
+      setChangePasswordSendingOtp(false)
     }
-    localStorage.setItem('dashboardSettings', JSON.stringify(payload))
-    alert(`Two-factor authentication ${nextValue ? 'enabled' : 'disabled'}. Work complete.`)
+  }
+
+  const handleSubmitNewPassword = async () => {
+    const otp = changePasswordOtp.trim()
+    const newPassword = changePasswordNewPassword
+    const confirm = changePasswordConfirmPassword
+
+    if (!changePasswordOtpSent) {
+      setChangePasswordStatus('Please send the verification code first.')
+      return
+    }
+    if (!otp) {
+      setChangePasswordStatus('Please enter the verification code (OTP).')
+      return
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setChangePasswordStatus('New password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirm) {
+      setChangePasswordStatus('New password and confirm password do not match.')
+      return
+    }
+
+    setChangePasswordSaving(true)
+    setChangePasswordStatus('')
+    try {
+      const response = await authAPI.verifyResetOTP(otp, newPassword)
+      const message = response?.data?.message || 'Password changed successfully.'
+      setChangePasswordStatus(message)
+      alert(message)
+      setChangePasswordOpen(false)
+      resetChangePasswordState(changePasswordEmail)
+    } catch (error) {
+      setChangePasswordStatus(extractApiErrorMessage(error) || 'Failed to change password.')
+    } finally {
+      setChangePasswordSaving(false)
+    }
   }
 
   const handleDeleteAccount = () => {
@@ -553,6 +848,45 @@ function Dashboard({ onLogout }) {
     localStorage.removeItem('dashboardSettings')
     handleLogout()
     alert('Account deleted. Work complete.')
+  }
+
+  const handleDownloadDailyReport = async () => {
+    try {
+      const userData = user || getStoredUser()
+      if (!userData || !userData.id) {
+        console.error('User data not found', userData)
+        alert('Error: User not authenticated. Please login again.')
+        return
+      }
+
+      const userId = userData.id
+      console.log('Downloading daily report for userId:', userId)
+
+      const response = await dashboardAPI.downloadDailyReport(userId)
+      const arrayBuffer = response.data
+      const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+
+      const contentDisposition = response.headers?.['content-disposition'] || response.headers?.['Content-Disposition']
+      let filename = 'daily_usage_report.xlsx'
+      if (contentDisposition) {
+        const match = /filename="?([^";]+)"?/.exec(contentDisposition)
+        if (match && match[1]) filename = match[1]
+      }
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      console.log('Daily report downloaded successfully')
+    } catch (error) {
+      const message = extractDownloadErrorMessage(error) || error.message
+      console.error('Failed to download daily report:', message)
+      alert('Failed to download daily report: ' + message)
+    }
   }
 
   const handleDownloadWeeklyReport = async () => {
@@ -590,8 +924,9 @@ function Dashboard({ onLogout }) {
       window.URL.revokeObjectURL(url)
       console.log('Weekly report downloaded successfully')
     } catch (error) {
-      console.error('Failed to download weekly report:', error.response?.data || error.message)
-      alert('Failed to download weekly report: ' + (error.response?.data?.message || error.message))
+      const message = extractDownloadErrorMessage(error) || error.message
+      console.error('Failed to download weekly report:', message)
+      alert('Failed to download weekly report: ' + message)
     }
   }
 
@@ -628,9 +963,46 @@ function Dashboard({ onLogout }) {
       window.URL.revokeObjectURL(url)
       console.log('Monthly report downloaded successfully')
     } catch (error) {
-      console.error('Failed to download monthly report:', error.response?.data || error.message)
-      alert('Failed to download monthly report: ' + (error.response?.data?.message || error.message))
+      const message = extractDownloadErrorMessage(error) || error.message
+      console.error('Failed to download monthly report:', message)
+      alert('Failed to download monthly report: ' + message)
     }
+  }
+
+  const extractDownloadErrorMessage = (error) => {
+    const data = error?.response?.data
+    if (!data) return error?.response?.statusText
+
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data)
+        return parsed?.message || data
+      } catch {
+        return data
+      }
+    }
+
+    if (data instanceof ArrayBuffer) {
+      const text = new TextDecoder('utf-8').decode(new Uint8Array(data))
+      try {
+        const parsed = JSON.parse(text)
+        return parsed?.message || text
+      } catch {
+        return text || error?.response?.statusText
+      }
+    }
+
+    if (ArrayBuffer.isView(data)) {
+      const text = new TextDecoder('utf-8').decode(data)
+      try {
+        const parsed = JSON.parse(text)
+        return parsed?.message || text
+      } catch {
+        return text || error?.response?.statusText
+      }
+    }
+
+    return data?.message || error?.response?.statusText
   }
 
   const getMaxConsumption = () => {
@@ -638,12 +1010,46 @@ function Dashboard({ onLogout }) {
     return Math.max(...consumptionData.map(d => d.consumption))
   }
 
-  const handleOptimizeRoom = (roomName) => {
-    alert(`Optimization tips for ${roomName}:
-1. Check for energy-efficient devices
-2. Use smart scheduling
-3. Monitor peak usage times
-4. Consider load balancing`)
+  const handleOptimizeRoom = (room) => {
+    if (!room) {
+      alert('No room data available yet. Please wait for the dashboard to load.')
+      return
+    }
+
+    const tips = []
+    const pct = Number(room.percentage) || 0
+    const kwh = Number(room.consumption) || 0
+    const trend = String(room.trend || '').toLowerCase()
+    const peakWindow = String(room.peak || '')
+
+    if (pct >= 30) tips.push(`High usage room (${pct}%): reduce runtime of high-power devices and avoid peak hours when possible.`)
+    if (kwh >= 6) tips.push(`High daily usage (~${kwh} kWh): consider switching to energy-efficient devices or lowering setpoints.`)
+    if (trend === 'increasing') tips.push('Usage trend is increasing: check for devices left on, new appliances, or schedule changes.')
+    if (trend === 'decreasing') tips.push('Good job—usage is decreasing. Keep automation schedules and standby power controls enabled.')
+
+    if (peakWindow) tips.push(`Peak window: ${peakWindow}. Try shifting flexible loads outside this time.`)
+
+    const roomName = String(room.name || 'this room')
+    const normalizedName = roomName.toLowerCase()
+    if (normalizedName.includes('kitchen')) {
+      tips.push('Kitchen tip: keep refrigerator vents clear, avoid frequent door opening, and run heavy appliances in off-peak hours.')
+    } else if (normalizedName.includes('bedroom')) {
+      tips.push('Bedroom tip: use AC sleep mode, clean filters, and set a timer to prevent overnight overuse.')
+    } else if (normalizedName.includes('office')) {
+      tips.push('Office tip: enable power-saving on laptops/PCs and use smart plugs to cut standby power after work hours.')
+    } else if (normalizedName.includes('bath')) {
+      tips.push('Bathroom tip: limit water-heater runtime and consider scheduling it only during required hours.')
+    }
+
+    if (peakConsumptionKwh > 0 && avgConsumptionKwh > 0 && peakConsumptionKwh > avgConsumptionKwh * 2) {
+      tips.push('Your overall consumption has strong spikes—consider staggering device start times to avoid simultaneous loads.')
+    }
+
+    if (tips.length === 0) {
+      tips.push('Enable smart scheduling, avoid unnecessary standby loads, and monitor peak usage hours.')
+    }
+
+    alert(`Optimization tips for ${roomName}:\n\n${tips.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)
   }
 
   const formatINR = (value) => {
@@ -715,6 +1121,12 @@ function Dashboard({ onLogout }) {
               📊 Overview
             </button>
             <button
+              className={`nav-item ${activeTab === 'roomwise' ? 'active' : ''}`}
+              onClick={() => setActiveTab('roomwise')}
+            >
+              &#127968; Room-wise Consumption
+            </button>
+            <button
               className={`nav-item ${activeTab === 'devices' ? 'active' : ''}`}
               onClick={() => setActiveTab('devices')}
             >
@@ -727,12 +1139,25 @@ function Dashboard({ onLogout }) {
               📈 Consumption
             </button>
             <button
+              className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
+              onClick={() => setActiveTab('reports')}
+            >
+              &#128229; Download Reports
+            </button>
+            <button
+              className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              &#128100; Profile
+            </button>
+            <button
               className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
             >
               ⚙️ Settings
             </button>
           </nav>
+
         </aside>
 
         {/* Main Content */}
@@ -760,11 +1185,41 @@ function Dashboard({ onLogout }) {
                     </div>
 
                     <div className="stat-card">
-                      <div className="stat-icon">&#128202;</div>
+                      <div className="stat-icon">&#9889;</div>
                       <div className="stat-details">
-                        <label>Monthly Average</label>
+                        <label>Weekly Consumption</label>
                         <p className="stat-value">
-                          {energyStats?.monthlyAverage || 385.2} kWh
+                          {energyStats?.weeklyConsumption ?? 78.4} kWh
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="stat-card">
+                      <div className="stat-icon">&#9889;</div>
+                      <div className="stat-details">
+                        <label>Monthly Consumption</label>
+                        <p className="stat-value">
+                          {energyStats?.monthlyConsumption ?? 312.6} kWh
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="stat-card">
+                      <div className="stat-icon">&#8377;</div>
+                      <div className="stat-details">
+                        <label>Today Cost</label>
+                        <p className="stat-value">
+                          {formatINR(energyStats?.dailyCost ?? 42.15)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="stat-card">
+                      <div className="stat-icon">&#8377;</div>
+                      <div className="stat-details">
+                        <label>Weekly Cost</label>
+                        <p className="stat-value">
+                          {formatINR(energyStats?.weeklyCost ?? 298.54)}
                         </p>
                       </div>
                     </div>
@@ -781,9 +1236,13 @@ function Dashboard({ onLogout }) {
                   </div>
 
                   {/* Report Downloads */}
-                  <div className="report-section">
+                  {false && (
+                    <div className="report-section">
                     <h3>Download Usage Reports</h3>
                     <div className="report-buttons">
+                      <button className="download-btn daily" onClick={handleDownloadDailyReport}>
+                        📅 Download Daily Report
+                      </button>
                       <button className="download-btn weekly" onClick={handleDownloadWeeklyReport}>
                         📊 Download Weekly Report
                       </button>
@@ -791,72 +1250,8 @@ function Dashboard({ onLogout }) {
                         📈 Download Monthly Report
                       </button>
                     </div>
-                  </div>
-
-                  {/* Room-Wise Consumption */}
-                  <div className="room-wise-section">
-                    <h3>Room-wise Consumption</h3>
-                    <div className="room-cards-grid">
-                      {roomWiseData.map((room, index) => (
-                        <div key={index} className="room-card">
-                          <div className="room-header">
-                            <h4>{room.name}</h4>
-                            <span className="room-percentage">{room.percentage}%</span>
-                          </div>
-                          
-                          <div className="room-consumption-display">
-                            <svg width="120" height="120" viewBox="0 0 120 120" className="consumption-pie">
-                              <circle
-                                cx="60"
-                                cy="60"
-                                r="50"
-                                fill="none"
-                                stroke={room.color}
-                                strokeWidth="35"
-                                strokeDasharray={`${(room.percentage / 100) * 314} 314`}
-                                transform="rotate(-90 60 60)"
-                              />
-                              <circle
-                                cx="60"
-                                cy="60"
-                                r="50"
-                                fill="none"
-                                stroke="#E8E8E8"
-                                strokeWidth="35"
-                                opacity="0.3"
-                              />
-                            </svg>
-                            <div className="consumption-value">
-                              <span className="value">{room.consumption}</span>
-                              <span className="unit">kWh</span>
-                            </div>
-                          </div>
-
-                          <div className="room-stats">
-                            <div className="room-stat">
-                              <span className="stat-label">📊 Average</span>
-                              <span className="stat-value">{room.average} kW</span>
-                            </div>
-                            <div className="room-stat">
-                              <span className="stat-label">⏰ Peak</span>
-                              <span className="stat-value">{room.peak}</span>
-                            </div>
-                            <div className="room-stat">
-                              <span className="stat-label">📈 Trend</span>
-                              <span className="stat-value">{room.trend}</span>
-                            </div>
-                          </div>
-
-                          <button 
-                            className="optimize-btn"
-                            onClick={() => handleOptimizeRoom(room.name)}
-                          >
-                            ✏️ Optimize
-                          </button>
-                        </div>
-                      ))}
                     </div>
-                  </div>
+                  )}
 
                   {/* Device Breakdown */}
                   <div className="breakdown-section">
@@ -906,6 +1301,94 @@ function Dashboard({ onLogout }) {
                         <span className="tip-number">4</span>
                         <p>Unplug devices when not in use</p>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Room-wise Tab */}
+              {activeTab === 'roomwise' && (
+                <div className="tab-content">
+                  <div className="tab-header">
+                    <h2>Room-wise Consumption</h2>
+                  </div>
+                  <form className="room-add-form" onSubmit={handleAddRoom}>
+                    <input
+                      type="text"
+                      placeholder="Enter room name (e.g., Living Room)"
+                      value={newRoomName}
+                      onChange={(e) => setNewRoomName(e.target.value)}
+                      maxLength="60"
+                      disabled={addingRoom}
+                      required
+                    />
+                    <button type="submit" className="room-add-btn" disabled={addingRoom}>
+                      {addingRoom ? 'Adding...' : 'Add Room'}
+                    </button>
+                  </form>
+                  <div className="room-wise-section">
+                    <div className="room-cards-grid">
+                      {roomWiseData.map((room, index) => (
+                        <div key={index} className="room-card">
+                          <div className="room-header">
+                            <h4>{room.name}</h4>
+                            <span className="room-percentage">{room.percentage}%</span>
+                          </div>
+
+                          <div className="room-consumption-display">
+                            <svg width="120" height="120" viewBox="0 0 120 120" className="consumption-pie">
+                              <circle
+                                cx="60"
+                                cy="60"
+                                r="50"
+                                fill="none"
+                                stroke={room.color || '#8B5FBF'}
+                                strokeWidth="35"
+                                strokeDasharray={`${(room.percentage / 100) * 314} 314`}
+                                transform="rotate(-90 60 60)"
+                              />
+                              <circle
+                                cx="60"
+                                cy="60"
+                                r="50"
+                                fill="none"
+                                stroke="#E8E8E8"
+                                strokeWidth="35"
+                                opacity="0.3"
+                              />
+                            </svg>
+                            <div className="consumption-value">
+                              <span className="value">{room.consumption}</span>
+                              <span className="unit">kWh</span>
+                            </div>
+                          </div>
+
+                          <div className="room-stats">
+                            <div className="room-stat">
+                              <span className="stat-label">Average</span>
+                              <span className="stat-value">{room.average} kW</span>
+                            </div>
+                            <div className="room-stat">
+                              <span className="stat-label">Peak</span>
+                              <span className="stat-value">{room.peak}</span>
+                            </div>
+                            <div className="room-stat">
+                              <span className="stat-label">Trend</span>
+                              <span className="stat-value">{room.trend}</span>
+                            </div>
+                          </div>
+
+                          <button 
+                            className="optimize-btn"
+                            onClick={() => handleOptimizeRoom(room)}
+                          >
+                            Optimize
+                          </button>
+                        </div>
+                      ))}
+                      {roomWiseData.length === 0 && (
+                        <p className="no-data">Add rooms to start tracking room-wise consumption.</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1227,13 +1710,64 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
 
-              {/* Settings Tab */}
-              {activeTab === 'settings' && (
+              {/* Reports Tab */}
+              {activeTab === 'reports' && (
                 <div className="tab-content">
-                  <h2>Settings</h2>
+                  <h2>Reports</h2>
+                  <div className="report-section">
+                    <h3>Download Usage Reports</h3>
+                    <div className="report-buttons">
+                      <button className="download-btn daily" onClick={handleDownloadDailyReport}>
+                        Download Daily Report
+                      </button>
+                      <button className="download-btn weekly" onClick={handleDownloadWeeklyReport}>
+                        Download Weekly Report
+                      </button>
+                      <button className="download-btn monthly" onClick={handleDownloadMonthlyReport}>
+                        Download Monthly Report
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Profile Tab */}
+              {activeTab === 'profile' && (
+                <div className="tab-content">
+                  <h2>Profile</h2>
                   <div className="settings-section">
                     <div className="setting-item">
                       <h3>Account Information</h3>
+                      <div className="profile-photo-row">
+                        <div className="profile-photo-wrapper">
+                          {profileForm.profilePhoto ? (
+                            <img
+                              src={profileForm.profilePhoto}
+                              alt="Profile"
+                              className="profile-photo"
+                            />
+                          ) : (
+                            <div className="profile-photo placeholder">
+                              {getInitials(profileForm.firstName, profileForm.lastName)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="profile-photo-actions">
+                          <label className="photo-upload-btn">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProfilePhotoChange}
+                            />
+                            {profileForm.profilePhoto ? 'Change Photo' : 'Add Photo'}
+                          </label>
+                          {profileForm.profilePhoto ? (
+                            <button className="photo-remove-btn" onClick={handleRemoveProfilePhoto} type="button">
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                       {isEditingProfile ? (
                         <div className="goal-input-group">
                           <label>First Name</label>
@@ -1263,7 +1797,63 @@ function Dashboard({ onLogout }) {
                             value={profileForm.mobileNumber}
                             onChange={(e) => setProfileForm({ ...profileForm, mobileNumber: e.target.value })}
                           />
-                          <button className="save-btn" onClick={handleSaveProfile}>💾 Save Profile</button>
+                          <label>Date of Birth</label>
+                          <input
+                            type="date"
+                            value={profileForm.dateOfBirth}
+                            onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                          />
+                          <label>Occupation</label>
+                          <input
+                            type="text"
+                            value={profileForm.occupation}
+                            onChange={(e) => setProfileForm({ ...profileForm, occupation: e.target.value })}
+                          />
+                          <label>Address Line 1</label>
+                          <input
+                            type="text"
+                            value={profileForm.addressLine1}
+                            onChange={(e) => setProfileForm({ ...profileForm, addressLine1: e.target.value })}
+                          />
+                          <label>Address Line 2</label>
+                          <input
+                            type="text"
+                            value={profileForm.addressLine2}
+                            onChange={(e) => setProfileForm({ ...profileForm, addressLine2: e.target.value })}
+                          />
+                          <label>City</label>
+                          <input
+                            type="text"
+                            value={profileForm.city}
+                            onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                          />
+                          <label>State</label>
+                          <input
+                            type="text"
+                            value={profileForm.state}
+                            onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                          />
+                          <label>Postal Code</label>
+                          <input
+                            type="text"
+                            value={profileForm.postalCode}
+                            onChange={(e) => setProfileForm({ ...profileForm, postalCode: e.target.value })}
+                          />
+                          <label>Country</label>
+                          <input
+                            type="text"
+                            value={profileForm.country}
+                            onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
+                          />
+                          <label>Bio</label>
+                          <textarea
+                            rows="3"
+                            value={profileForm.bio}
+                            onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+                          />
+                          <button className="save-btn" onClick={handleSaveProfile} disabled={profileSaving}>
+                            {profileSaving ? 'Saving...' : 'Save Profile'}
+                          </button>
                           <button className="form-cancel" onClick={handleCancelProfileEdit}>Cancel</button>
                         </div>
                       ) : (
@@ -1271,11 +1861,23 @@ function Dashboard({ onLogout }) {
                           <p><strong>Name:</strong> {user?.firstName} {user?.lastName}</p>
                           <p><strong>Email:</strong> {user?.email}</p>
                           <p><strong>Mobile:</strong> {user?.mobileNumber}</p>
-                          <button className="edit-profile-btn" onClick={handleEditProfile}>✏️ Edit Profile</button>
+                          <p><strong>Date of Birth:</strong> {user?.dateOfBirth || 'Not set'}</p>
+                          <p><strong>Occupation:</strong> {user?.occupation || 'Not set'}</p>
+                          <p><strong>Address:</strong> {getAddressSummary(user) || 'Not set'}</p>
+                          <p><strong>Bio:</strong> {user?.bio || 'Not set'}</p>
+                          <button className="edit-profile-btn" onClick={handleEditProfile}>Edit Profile</button>
                         </>
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
 
+              {/* Settings Tab */}
+              {activeTab === 'settings' && (
+                <div className="tab-content">
+                  <h2>Settings</h2>
+                  <div className="settings-section">
                     <div className="setting-item">
                       <h3>Notification Preferences</h3>
                       <label>
@@ -1327,9 +1929,6 @@ function Dashboard({ onLogout }) {
                     <div className="setting-item">
                       <h3>Security</h3>
                       <button className="security-btn" onClick={handleChangePassword}>🔐 Change Password</button>
-                      <button className="security-btn" onClick={handleToggleTwoFactor}>
-                        🔑 Two-Factor Authentication: {twoFactorEnabled ? 'Enabled' : 'Disabled'}
-                      </button>
                     </div>
 
                     <div className="setting-item danger-zone">
@@ -1341,6 +1940,88 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
             </>
+          )}
+
+          {changePasswordOpen && (
+            <div
+              className="modal-overlay"
+              onClick={() => {
+                setChangePasswordOpen(false)
+                resetChangePasswordState(changePasswordEmail)
+              }}
+              role="presentation"
+            >
+              <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Change Password">
+                <div className="modal-header">
+                  <h3>Change Password</h3>
+                  <button
+                    className="modal-close"
+                    onClick={() => {
+                      setChangePasswordOpen(false)
+                      resetChangePasswordState(changePasswordEmail)
+                    }}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="modal-body">
+                  <p className="modal-hint">
+                    We’ll send a verification code to <strong>{changePasswordEmail}</strong>.
+                  </p>
+
+                  <div className="modal-row">
+                    <button className="save-btn" onClick={handleSendChangePasswordOtp} disabled={changePasswordSendingOtp} type="button">
+                      {changePasswordSendingOtp ? 'Sending…' : (changePasswordOtpSent ? 'Resend Code' : 'Send Code')}
+                    </button>
+                  </div>
+
+                  <div className="goal-input-group" style={{ marginTop: 16 }}>
+                    <label>Verification Code (OTP)</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={changePasswordOtp}
+                      onChange={(e) => setChangePasswordOtp(e.target.value)}
+                      placeholder="Enter OTP"
+                    />
+                  </div>
+
+                  <div className="goal-input-group">
+                    <label>New Password</label>
+                    <input
+                      type="password"
+                      value={changePasswordNewPassword}
+                      onChange={(e) => setChangePasswordNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+
+                  <div className="goal-input-group">
+                    <label>Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={changePasswordConfirmPassword}
+                      onChange={(e) => setChangePasswordConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                    />
+                  </div>
+
+                  {changePasswordStatus ? (
+                    <div className="modal-status" aria-live="polite">
+                      {changePasswordStatus}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="modal-footer">
+                  <button className="security-btn" onClick={handleSubmitNewPassword} disabled={changePasswordSaving} type="button">
+                    {changePasswordSaving ? 'Changing…' : 'Change Password'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

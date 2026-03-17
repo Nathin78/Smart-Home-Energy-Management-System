@@ -1,11 +1,9 @@
 import axios from 'axios'
 
-// In dev, always use the Vite proxy (`/api`) to avoid CORS and env-var misconfig.
-// In production, allow an explicit override.
+// Default to the Vite proxy (`/api`) in dev to avoid CORS.
+// Allow overrides in any mode when explicitly provided.
 const DEFAULT_API_BASE_URL = '/api'
-const API_BASE_URL = import.meta.env.DEV
-  ? DEFAULT_API_BASE_URL
-  : (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
 
 // Create axios instance with CORS headers
 const apiClient = axios.create({
@@ -67,9 +65,28 @@ export const dashboardAPI = {
   getTodayConsumption: () => apiClient.get('/dashboard/today-consumption'),
   getMonthlyData: () => apiClient.get('/dashboard/monthly-data'),
   getConsumption: (userId, period) => apiClient.get('/dashboard/consumption', { params: { userId, period } }),
+  getRoomWise: (userId) => apiClient.get('/dashboard/room-wise', { params: { userId } }),
+  getPreferences: (userId) => apiClient.get('/dashboard/preferences', { params: { userId } }),
+  savePreferences: (userId, prefs) => apiClient.post('/dashboard/preferences', prefs, { params: { userId } }),
   // Use 'arraybuffer' which is more reliably handled across browsers
+  downloadDailyReport: (userId, date) =>
+    apiClient.get('/dashboard/report/daily', {
+      params: date ? { userId, date } : { userId },
+      responseType: 'arraybuffer',
+    }),
   downloadWeeklyReport: (userId) => apiClient.get(`/dashboard/report/weekly?userId=${userId}`, { responseType: 'arraybuffer' }),
   downloadMonthlyReport: (userId) => apiClient.get(`/dashboard/report/monthly?userId=${userId}`, { responseType: 'arraybuffer' }),
+}
+
+// Room APIs
+export const roomAPI = {
+  getRooms: (userId) => apiClient.get('/rooms', { params: { userId } }),
+  addRoom: (userId, name) => apiClient.post('/rooms', { name }, { params: { userId } }),
+}
+
+// User APIs
+export const userAPI = {
+  updateProfile: (userId, profileData) => apiClient.put(`/users/${userId}/profile`, profileData),
 }
 
 export default apiClient

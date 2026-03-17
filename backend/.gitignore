@@ -8,6 +8,7 @@
 /dependency-reduced-pom.xml
 /.flattened-pom.xml
 
+
 # IDEs
 .idea/
 .vscode/
@@ -29,6 +30,7 @@
 # Application
 application-dev.properties
 application-prod.properties
+application.properties
 
 # Logs
 *.log

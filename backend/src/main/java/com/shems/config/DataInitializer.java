@@ -3,6 +3,8 @@ package com.shems.config;
 import com.shems.entity.User;
 import com.shems.repository.UserRepository;
 import com.shems.service.DeviceService;
+import com.shems.entity.Room;
+import com.shems.repository.RoomRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +14,7 @@ import java.time.LocalDateTime;
 public class DataInitializer {
 
     @Bean
-    public CommandLineRunner initializeData(UserRepository userRepository, DeviceService deviceService) {
+    public CommandLineRunner initializeData(UserRepository userRepository, DeviceService deviceService, RoomRepository roomRepository) {
         return args -> {
             // Check if users already exist
             if (userRepository.count() == 0) {
@@ -29,6 +31,7 @@ public class DataInitializer {
                 user1.setEmailVerified(true);  // Mark as verified
                 User saved1 = userRepository.save(user1);
                 deviceService.createDefaultDevices(saved1.getId());
+                ensureDefaultRooms(roomRepository, saved1.getId());
 
                 // Create Jane Smith
                 User user2 = new User();
@@ -43,6 +46,7 @@ public class DataInitializer {
                 user2.setEmailVerified(true);  // Mark as verified
                 User saved2 = userRepository.save(user2);
                 deviceService.createDefaultDevices(saved2.getId());
+                ensureDefaultRooms(roomRepository, saved2.getId());
 
                 // Create Bob Johnson
                 User user3 = new User();
@@ -57,6 +61,7 @@ public class DataInitializer {
                 user3.setEmailVerified(true);  // Mark as verified
                 User saved3 = userRepository.save(user3);
                 deviceService.createDefaultDevices(saved3.getId());
+                ensureDefaultRooms(roomRepository, saved3.getId());
 
                 System.out.println("✅ Test users created successfully!");
             } else {
@@ -65,8 +70,29 @@ public class DataInitializer {
                 // Ensure each existing user has default devices (useful for demos after schema changes).
                 for (User u : userRepository.findAll()) {
                     try {
+                        boolean prefsUpdated = false;
+                        if (u.getNotifyEnergyAlerts() == null) {
+                            u.setNotifyEnergyAlerts(true);
+                            prefsUpdated = true;
+                        }
+                        if (u.getNotifyEmailNotifications() == null) {
+                            u.setNotifyEmailNotifications(true);
+                            prefsUpdated = true;
+                        }
+                        if (u.getNotifyWeeklyReports() == null) {
+                            u.setNotifyWeeklyReports(true);
+                            prefsUpdated = true;
+                        }
+                        if (u.getNotifyPeakAlerts() == null) {
+                            u.setNotifyPeakAlerts(false);
+                            prefsUpdated = true;
+                        }
                         if (deviceService.getDevicesForUser(u.getId()).isEmpty()) {
                             deviceService.createDefaultDevices(u.getId());
+                        }
+                        ensureDefaultRooms(roomRepository, u.getId());
+                        if (prefsUpdated) {
+                            userRepository.save(u);
                         }
                     } catch (Exception ignored) {
                         // Best-effort seeding; don't block startup.
@@ -74,6 +100,27 @@ public class DataInitializer {
                 }
             }
         };
+    }
+
+    private void ensureDefaultRooms(RoomRepository roomRepository, Long userId) {
+        String[] rooms = new String[] {
+                "Living Room",
+                "Kitchen",
+                "Master Bedroom",
+                "Bedroom",
+                "Bathroom",
+                "Home Office",
+                "Dining Room",
+                "Garage"
+        };
+        for (String name : rooms) {
+            if (!roomRepository.existsByUserIdAndNameIgnoreCase(userId, name)) {
+                Room room = new Room();
+                room.setUserId(userId);
+                room.setName(name);
+                roomRepository.save(room);
+            }
+        }
     }
 
 }
