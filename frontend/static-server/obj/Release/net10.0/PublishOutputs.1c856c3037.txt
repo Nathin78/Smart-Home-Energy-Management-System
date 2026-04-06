@@ -1,0 +1,5 @@
+c:\nathin\infosys\task\frontend\publish\StaticServer.exe
+c:\nathin\infosys\task\frontend\publish\StaticServer.dll
+c:\nathin\infosys\task\frontend\publish\StaticServer.deps.json
+c:\nathin\infosys\task\frontend\publish\StaticServer.runtimeconfig.json
+c:\nathin\infosys\task\frontend\publish\StaticServer.pdb

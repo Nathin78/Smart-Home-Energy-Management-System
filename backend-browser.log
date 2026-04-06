@@ -1,0 +1,15 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.0)
+
+2026-04-02T00:20:52.743+05:30  INFO 12488 --- [           main] com.shems.ShemsApplication               : Starting ShemsApplication v1.0.0 using Java 17.0.12 with PID 12488 (C:\nathin\infosys\task\backend\target\shems-backend-1.0.0.jar started by NarmathaNathin in C:\nathin\infosys\task\backend)
+2026-04-02T00:20:52.753+05:30 DEBUG 12488 --- [           main] com.shems.ShemsApplication               : Running with Spring Boot v3.4.0, Spring v6.2.0
+2026-04-02T00:20:52.755+05:30  INFO 12488 --- [           main] com.shems.ShemsApplication               : No active profile set, falling back to 1 default profile: "default"
+2026-04-02T00:20:55.698+05:30  INFO 12488 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-02T00:20:55.945+05:30  INFO 12488 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 205 ms. Found 5 JPA repository interfaces.

@@ -137,7 +137,7 @@ function Dashboard({ onLogout }) {
     const userId = userData?.id
     if (!userId) return
 
-    const es = new EventSource(`/api/realtime/stream?userId=${userId}`)
+    const es = new EventSource(`http://127.0.0.1:8080/api/realtime/stream?userId=${userId}`)
     const onTick = () => {
       loadDashboardData({ silent: true })
       loadConsumptionData(timePeriodRef.current, { silent: true })

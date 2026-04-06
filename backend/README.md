@@ -1,42 +1,36 @@
-# Smart Home Energy Management System (SHEMS) - Backend
+# SHEMS Backend
 
-## Project Overview
-This is the Spring Boot backend for the SHEMS application, providing RESTful APIs for managing smart home devices.
+Spring Boot backend for the Smart Home Energy Management System.
 
-## Prerequisites
-- Java 17 or higher
-- Apache Maven 3.6+
-- MySQL 8.0+
-- Git
+## Features
+- User registration, login, logout, email verification, and password reset via OTP
+- Device management with create, update, delete, search, and online/status filters
+- Room management per user with default room seeding for new accounts
+- Dashboard endpoints for energy stats, consumption charts, preferences, and room-wise breakdowns
+- Real-time updates through Server-Sent Events on `/api/realtime/stream`
+- Scheduled usage simulation and cleanup jobs to keep demo data fresh
+- Email notifications for verification, welcome messages, energy alerts, peak alerts, and weekly reports
+- Excel usage report generation for daily, weekly, and monthly periods
+- Demo data seeding for sample users, devices, and rooms on startup
 
-## Project Structure
-```
-backend/
-├── pom.xml
-├── src/
-│   ├── main/
-│   │   ├── java/com/shems/
-│   │   │   ├── ShemsApplication.java (Main Spring Boot Application)
-│   │   │   ├── config/
-│   │   │   │   └── CorsConfig.java (CORS Configuration)
-│   │   │   ├── controller/
-│   │   │   │   └── DeviceController.java (REST API Endpoints)
-│   │   │   ├── entity/
-│   │   │   │   └── Device.java (Database Entity)
-│   │   │   ├── repository/
-│   │   │   │   └── DeviceRepository.java (JPA Repository)
-│   │   │   └── service/
-│   │   │       └── DeviceService.java (Business Logic)
-│   │   └── resources/
-│   │       └── application.properties (Configuration)
-│   └── test/
-└── README.md
-```
+## Stack
+- Spring Boot 3.4
+- Spring Data JPA
+- MySQL
+- Java 17
 
-## Setup Instructions
+## Configuration
+The application reads these environment variables:
+- `SHEMS_PORT` defaults to `8080`
+- `MYSQL_HOST` defaults to `localhost`
+- `MYSQL_PORT` defaults to `3306`
+- `MYSQL_DATABASE` defaults to `shems_db`
+- `MYSQL_USERNAME` defaults to `root`
+- `MYSQL_PASSWORD` defaults to empty
+- `SHEMS_MAIL_USERNAME` and `SHEMS_MAIL_PASSWORD` for email OTP/reset mail
 
-### Step 1: Database Setup
-Create a MySQL database and user for SHEMS:
+## MySQL Setup
+Create the database before starting the app:
 
 ```sql
 CREATE DATABASE shems_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -45,209 +39,31 @@ GRANT ALL PRIVILEGES ON shems_db.* TO 'shems_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-Or use the default credentials in `application.properties`:
-- Database: `shems_db`
-- Username: `root`
-- Password: `root`
+Then run the backend with matching environment variables, for example:
 
-### Step 2: Configure Database Connection
-Edit `src/main/resources/application.properties`:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/shems_db?useSSL=false&serverTimezone=UTC
-spring.datasource.username=root
-spring.datasource.password=root
+```powershell
+$env:MYSQL_USERNAME="shems_user"
+$env:MYSQL_PASSWORD="shems_password"
+$env:MYSQL_DATABASE="shems_db"
+$env:MYSQL_HOST="localhost"
+$env:MYSQL_PORT="3306"
 ```
 
-### Step 3: Build the Backend
-Navigate to the backend folder and run:
+## Frontend Connection
+The frontend already calls the backend through the `/api` prefix. In development:
+- Vite serves the frontend on `http://localhost:5173`
+- The dev proxy forwards `/api` to `http://localhost:8080`
+- The backend serves the API from `http://localhost:8080/api`
+
+## Run
+From the `backend` folder:
 
 ```bash
-cd backend
-mvn clean install
+mvn clean package -DskipTests
+java -jar target/shems-backend-1.0.0.jar
 ```
 
-### Step 4: Run the Backend
-```bash
-mvn spring-boot:run
-```
+Or use the provided `start-backend.cmd` / `start-backend.ps1` scripts.
 
-The backend will start on `http://localhost:8080/api`
-
-## API Endpoints
-
-### Device Management
-- **GET** `/api/devices` - Get all devices
-- **GET** `/api/devices/{id}` - Get device by ID
-- **POST** `/api/devices` - Create device
-- **PUT** `/api/devices/{id}` - Update device
-- **DELETE** `/api/devices/{id}` - Delete device
-
-### Device Search & Filtering
-- **GET** `/api/devices/search?name={deviceName}` - Search devices by name
-- **GET** `/api/devices/status/{status}` - Get devices by status (online/offline)
-- **GET** `/api/devices/online` - Get all online devices
-- **PUT** `/api/devices/{id}/toggle-status` - Toggle device online/offline status
-
-### Health Check
-- **GET** `/api/devices/health` - Check backend health
-
-## Example API Requests
-
-### Create a Device
-```bash
-curl -X POST http://localhost:8080/api/devices \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Living Room Light",
-    "type": "Smart Light",
-    "icon": "💡",
-    "status": "online",
-    "powerUsage": "45W",
-    "temperature": "25°C",
-    "online": true
-  }'
-```
-
-### Get All Devices
-```bash
-curl http://localhost:8080/api/devices
-```
-
-### Update a Device
-```bash
-curl -X PUT http://localhost:8080/api/devices/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Living Room Light",
-    "type": "Smart Light",
-    "icon": "💡",
-    "status": "online",
-    "powerUsage": "50W",
-    "temperature": "26°C",
-    "online": true
-  }'
-```
-
-### Delete a Device
-```bash
-curl -X DELETE http://localhost:8080/api/devices/1
-```
-
-## Frontend Integration
-
-### Update Frontend API Base URL
-In your frontend JavaScript files, update the API endpoint to point to the backend:
-
-```javascript
-// src/js/api.js (or wherever your API calls are)
-const API_BASE_URL = 'http://localhost:8080/api';
-
-// Example: Fetch all devices
-async function getAllDevices() {
-    const response = await fetch(`${API_BASE_URL}/devices`);
-    return await response.json();
-}
-
-// Example: Add a device
-async function addDevice(deviceData) {
-    const response = await fetch(`${API_BASE_URL}/devices`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(deviceData)
-    });
-    return await response.json();
-}
-```
-
-### Frontend to Backend Communication
-The CORS configuration allows requests from:
-- `http://localhost:5500` (Live Server)
-- `http://localhost:8000` (Python HTTP Server)
-- `http://127.0.0.1:5500`
-- `http://127.0.0.1:8000`
-
-To add more origins, edit `src/main/java/com/shems/config/CorsConfig.java`
-
-## Database Schema
-
-### Devices Table
-```sql
-CREATE TABLE devices (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255) NOT NULL,
-  type VARCHAR(255) NOT NULL,
-  icon VARCHAR(50),
-  status VARCHAR(50) NOT NULL,
-  power_usage VARCHAR(50),
-  temperature VARCHAR(50),
-  online BOOLEAN NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
-
-## Running Frontend and Backend Together
-
-### Terminal 1: Run Backend
-```bash
-cd backend
-mvn spring-boot:run
-# Runs on http://localhost:8080/api
-```
-
-### Terminal 2: Run Frontend
-```bash
-cd .. (go to root task folder)
-python -m http.server 8000
-# or
-# Live Server on http://localhost:5500
-```
-
-Then open your frontend on the browser and it will communicate with the backend.
-
-## Troubleshooting
-
-### MySQL Connection Issues
-1. Ensure MySQL service is running
-2. Check credentials in `application.properties`
-3. Verify database `shems_db` exists
-
-### CORS Errors
-Add your frontend URL to `CorsConfig.java` allowedOrigins
-
-### Port Already in Use
-Change server port in `application.properties`:
-```properties
-server.port=8081
-```
-
-### Maven Build Failures
-```bash
-mvn clean install -DskipTests
-```
-
-## Technologies Used
-- Spring Boot 3.1.5
-- Spring Data JPA
-- MySQL 8.0
-- Lombok
-- Maven
-
-## Development
-For local development with hot reload:
-```bash
-mvn spring-boot:run
-```
-
-DevTools is configured for automatic restart on file changes.
-
-## Future Enhancements
-- User authentication (JWT)
-- Energy analytics endpoints
-- Device notifications
-- Scheduling features
-- Real-time WebSocket updates
-
-## License
-This project is part of the Smart Home Energy Management System.
+## API
+The backend exposes auth, devices, rooms, dashboard, profile, and realtime endpoints under `/api`.

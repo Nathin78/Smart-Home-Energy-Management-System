@@ -1,8 +1,8 @@
 import axios from 'axios'
 
-// Default to the Vite proxy (`/api`) in dev to avoid CORS.
+// Default directly to the backend so the app works even without the Vite proxy.
 // Allow overrides in any mode when explicitly provided.
-const DEFAULT_API_BASE_URL = '/api'
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8080/api'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
 
 // Create axios instance with CORS headers
