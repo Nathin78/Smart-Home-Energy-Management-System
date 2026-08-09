@@ -19,40 +19,6 @@ Java 17
 Configuration
 The application reads these environment variables:
 
-SHEMS_PORT defaults to 8080
-MYSQL_HOST defaults to localhost
-MYSQL_PORT defaults to 3306
-MYSQL_DATABASE defaults to shems_db
-MYSQL_USERNAME defaults to root
-MYSQL_PASSWORD defaults to empty
-SHEMS_MAIL_USERNAME and SHEMS_MAIL_PASSWORD for email OTP/reset mail
-MySQL Setup
-Create the database before starting the app:
-
-CREATE DATABASE shems_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'shems_user'@'localhost' IDENTIFIED BY 'shems_password';
-GRANT ALL PRIVILEGES ON shems_db.* TO 'shems_user'@'localhost';
-FLUSH PRIVILEGES;
-Then run the backend with matching environment variables, for example:
-
-$env:MYSQL_USERNAME="shems_user"
-$env:MYSQL_PASSWORD="shems_password"
-$env:MYSQL_DATABASE="shems_db"
-$env:MYSQL_HOST="localhost"
-$env:MYSQL_PORT="3306"
-Frontend Connection
-The frontend already calls the backend through the /api prefix. In development:
-
-Vite serves the frontend on http://localhost:5173
-The dev proxy forwards /api to http://localhost:8080
-The backend serves the API from http://localhost:8080/api
-Run
-From the backend folder:
-
-mvn clean package -DskipTests
-java -jar target/shems-backend-1.0.0.jar
-Or use the provided start-backend.cmd / start-backend.ps1 scripts.
-
 API
 The backend exposes auth, devices, rooms, dashboard, profile, and realtime endpoints under /api.
 
