@@ -130,38 +130,6 @@ The application supports sample/demo data for development and testing, including
 
 ---
 
-## 🏗️ System Architecture
-
-```text
-                    ┌──────────────────────┐
-                    │      Frontend        │
-                    │   Web Application    │
-                    └──────────┬───────────┘
-                               │
-                               │ REST API
-                               ▼
-                    ┌──────────────────────┐
-                    │    Spring Boot       │
-                    │      Backend         │
-                    ├──────────────────────┤
-                    │ Authentication       │
-                    │ Device Management    │
-                    │ Room Management      │
-                    │ Energy Monitoring    │
-                    │ Reports              │
-                    │ Notifications        │
-                    └──────────┬───────────┘
-                               │
-                ┌──────────────┴──────────────┐
-                ▼                             ▼
-       ┌─────────────────┐          ┌─────────────────┐
-       │     MySQL       │          │  Email Service  │
-       │    Database     │          │   SMTP/OTP      │
-       └─────────────────┘          └─────────────────┘
-```
-
----
-
 ## 📁 Project Structure
 
 ```text
